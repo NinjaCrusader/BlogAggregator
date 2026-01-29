@@ -7,24 +7,38 @@ import (
 )
 
 type Config struct {
-	Url      string `json:"url"`
-	Username string `json:"username"`
+	Url      string `json:"db_url"`
+	Username string `json:"current_user_name"`
 }
 
-func (c Config) SetUser() {
+func (c *Config) SetUser(username string) error {
+
+	c.Username = username
+
+	writeError := write(*c)
+	if writeError != nil {
+		return writeError
+	}
+
+	return nil
 
 }
 
 func write(cfg Config) error {
 
-	userFilePath, err := getConfigFilePath()
+	cfgData, err := json.Marshal(cfg)
 	if err != nil {
 		return err
 	}
 
-	userConfigData, err := os.ReadFile(userFilePath)
+	configFilePath, err := getConfigFilePath()
 	if err != nil {
 		return err
+	}
+
+	writeErr := os.WriteFile(configFilePath, cfgData, 0666)
+	if writeErr != nil {
+		return writeErr
 	}
 
 	return nil
