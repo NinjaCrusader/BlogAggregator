@@ -9,4 +9,6 @@ type State struct {
 }
 
 type Command struct {
+	name     string
+	argument []string
 }
