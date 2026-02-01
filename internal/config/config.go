@@ -24,26 +24,6 @@ func (c *Config) SetUser(username string) error {
 
 }
 
-func write(cfg Config) error {
-
-	cfgData, err := json.Marshal(cfg)
-	if err != nil {
-		return err
-	}
-
-	configFilePath, err := getConfigFilePath()
-	if err != nil {
-		return err
-	}
-
-	writeErr := os.WriteFile(configFilePath, cfgData, 0666)
-	if writeErr != nil {
-		return writeErr
-	}
-
-	return nil
-}
-
 func getConfigFilePath() (string, error) {
 	var configFileName = ".gatorconfig.json"
 
@@ -75,4 +55,24 @@ func Read() (Config, error) {
 	}
 
 	return userConfig, nil
+}
+
+func write(cfg Config) error {
+
+	cfgData, err := json.Marshal(cfg)
+	if err != nil {
+		return err
+	}
+
+	configFilePath, err := getConfigFilePath()
+	if err != nil {
+		return err
+	}
+
+	writeErr := os.WriteFile(configFilePath, cfgData, 0666)
+	if writeErr != nil {
+		return writeErr
+	}
+
+	return nil
 }
