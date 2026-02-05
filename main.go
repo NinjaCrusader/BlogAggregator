@@ -13,17 +13,7 @@ func main() {
 		return
 	}
 
-	userErr := cfg.SetUser("Jerold")
-	if userErr != nil {
-		fmt.Println("There was an error setting the User", err)
-		return
+	newState := state{
+		config: &cfg,
 	}
-
-	newCfg, err := config.Read()
-	if err != nil {
-		fmt.Println("There was an error reading the updated config file", err)
-		return
-	}
-
-	fmt.Println(newCfg)
 }
