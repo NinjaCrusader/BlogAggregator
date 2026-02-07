@@ -37,11 +37,15 @@ func (c *commands) register(name string, f func(*state, command) error) {
 }
 
 func handlerLogin(s *state, cmd command) error {
-	if len(cmd.args) == 0 {
-		return fmt.Errorf("no username argument provided")
+	if len(cmd.args) != 1 {
+		return fmt.Errorf("usage: login <username>")
 	}
 
 	s.config.Username = cmd.args[0]
+
+	if err := s.config.SetUser(cmd.args[0]); err != nil {
+		return err
+	}
 
 	fmt.Printf("The user has been set to %v\n", s.config.Username)
 
