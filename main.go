@@ -1,11 +1,14 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
 	"log"
 	"os"
 
 	"github.com/NinjaCrusader/BlogAggregator/internal/config"
+	"github.com/NinjaCrusader/BlogAggregator/internal/database"
+	_ "github.com/lib/pq"
 )
 
 func main() {
@@ -15,8 +18,16 @@ func main() {
 		return
 	}
 
+	db, err := sql.Open("postgres", cfg.Url)
+	if err != nil {
+		log.Fatalf("database error: %v", err)
+	}
+
+	dbQueries := database.New(db)
+
 	newState := state{
-		config: &cfg,
+		db:  dbQueries,
+		cfg: &cfg,
 	}
 
 	commands := commands{

@@ -4,10 +4,12 @@ import (
 	"fmt"
 
 	"github.com/NinjaCrusader/BlogAggregator/internal/config"
+	"github.com/NinjaCrusader/BlogAggregator/internal/database"
 )
 
 type state struct {
-	config *config.Config
+	db  *database.Queries
+	cfg *config.Config
 }
 
 type command struct {
@@ -41,13 +43,17 @@ func handlerLogin(s *state, cmd command) error {
 		return fmt.Errorf("usage: login <username>")
 	}
 
-	s.config.Username = cmd.args[0]
+	s.cfg.Username = cmd.args[0]
 
-	if err := s.config.SetUser(cmd.args[0]); err != nil {
+	if err := s.cfg.SetUser(cmd.args[0]); err != nil {
 		return err
 	}
 
-	fmt.Printf("The user has been set to %v\n", s.config.Username)
+	fmt.Printf("The user has been set to %v\n", s.cfg.Username)
 
+	return nil
+}
+
+func handlerRegister(s *state, cmd command) error {
 	return nil
 }
