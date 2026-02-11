@@ -13,15 +13,21 @@ import (
 	"github.com/lib/pq"
 )
 
+//state struct
+
 type state struct {
 	db  *database.Queries
 	cfg *config.Config
 }
 
+//command struct
+
 type command struct {
 	name string
 	args []string
 }
+
+//commands struct and helper functions
 
 type commands struct {
 	commandMap map[string]func(*state, command) error
@@ -43,6 +49,8 @@ func (c *commands) run(s *state, cmd command) error {
 func (c *commands) register(name string, f func(*state, command) error) {
 	c.commandMap[name] = f
 }
+
+//commands to be used
 
 func handlerLogin(s *state, cmd command) error {
 	if len(cmd.args) != 1 {
@@ -100,6 +108,22 @@ func handlerRegister(s *state, cmd command) error {
 	s.cfg.SetUser(createdUser.Name)
 
 	fmt.Printf("The user %v was created %v\n", createdUser.Name, createdUser)
+
+	return nil
+}
+
+func reset(s *state, cmd command) error {
+
+	err := s.db.DeleteUsers(context.Background())
+	if err != nil {
+		if dberror, ok := err.(*pq.Error); ok {
+			return fmt.Errorf("error with delete: %v", dberror.Code)
+		}
+		return fmt.Errorf("error trying to delete %v", err)
+	}
+
+	fmt.Println("reset was successful")
+	fmt.Println("exit status 0")
 
 	return nil
 }
