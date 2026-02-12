@@ -127,3 +127,25 @@ func reset(s *state, cmd command) error {
 
 	return nil
 }
+
+func GetUsers(s *state, cmd command) error {
+
+	users, err := s.db.GetUsers(context.Background())
+	if err != nil {
+		if dbError, ok := err.(*pq.Error); ok {
+			return fmt.Errorf("error getting users: %v", dbError.Code)
+		} else {
+			return fmt.Errorf("there was an error getting users: %v", err)
+		}
+	}
+
+	for i := 0; i < len(users); i++ {
+		if users[i] == s.cfg.Username {
+			fmt.Printf("* %v (current)\n", users[i])
+		} else {
+			fmt.Println(users[i])
+		}
+	}
+
+	return nil
+}
