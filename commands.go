@@ -149,3 +149,15 @@ func GetUsers(s *state, cmd command) error {
 
 	return nil
 }
+
+func agg(s *state, cmd command) error {
+
+	feed, err := fetchFeed(context.Background(), "https://www.wagslane.dev/index.xml")
+	if err != nil {
+		return fmt.Errorf("there was an error fetching feed: %v\n", err)
+	}
+
+	fmt.Println(*feed)
+
+	return nil
+}
