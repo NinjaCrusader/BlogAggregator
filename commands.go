@@ -177,7 +177,7 @@ func handlerAddFeed(s *state, cmd command) error {
 		if dbError, ok := err.(*pq.Error); ok {
 			return fmt.Errorf("there was an error getting the user: %v\n", dbError.Code)
 		} else {
-			return fmt.Errorf("there was an error getting the user\n", err)
+			return fmt.Errorf("there was an error getting the user: %v\n", err)
 		}
 	}
 
