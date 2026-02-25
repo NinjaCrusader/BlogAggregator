@@ -7,13 +7,12 @@ package database
 
 import (
 	"context"
-	"database/sql"
 	"time"
 
 	"github.com/google/uuid"
 )
 
-const addfeed = `-- name: addfeed :one
+const addFeed = `-- name: AddFeed :one
 INSERT INTO feeds (id, created_at, updated_at, name, url, user_id)
 VALUES (
     $1,
@@ -26,17 +25,17 @@ VALUES (
 RETURNING id, created_at, updated_at, name, url, user_id
 `
 
-type addfeedParams struct {
+type AddFeedParams struct {
 	ID        uuid.UUID
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	Name      string
 	Url       string
-	UserID    sql.NullString
+	UserID    uuid.NullUUID
 }
 
-func (q *Queries) addfeed(ctx context.Context, arg addfeedParams) (Feed, error) {
-	row := q.db.QueryRowContext(ctx, addfeed,
+func (q *Queries) AddFeed(ctx context.Context, arg AddFeedParams) (Feed, error) {
+	row := q.db.QueryRowContext(ctx, addFeed,
 		arg.ID,
 		arg.CreatedAt,
 		arg.UpdatedAt,

@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/NinjaCrusader/BlogAggregator/internal/config"
@@ -158,6 +159,57 @@ func agg(s *state, cmd command) error {
 	}
 
 	fmt.Println(*feed)
+
+	return nil
+}
+
+func handlerAddFeed(s *state, cmd command) error {
+
+	if len(cmd.args) < 2 {
+		return fmt.Errorf("not enough arguments provided\n")
+	}
+
+	name := strings.TrimSpace(cmd.args[0])
+	url := strings.TrimSpace(cmd.args[1])
+
+	currentUser, err := s.db.GetUser(context.Background(), s.cfg.Username)
+	if err != nil {
+		if dbError, ok := err.(*pq.Error); ok {
+			return fmt.Errorf("there was an error getting the user: %v\n", dbError.Code)
+		} else {
+			return fmt.Errorf("there was an error getting the user\n", err)
+		}
+	}
+
+	correctedUserID := uuid.NullUUID{
+		UUID:  currentUser.ID,
+		Valid: true,
+	}
+
+	var feedParams database.AddFeedParams
+
+	feedParams.ID = uuid.New()
+	feedParams.CreatedAt = time.Now()
+	feedParams.UpdatedAt = time.Now()
+	feedParams.Name = name
+	feedParams.Url = url
+	feedParams.UserID = correctedUserID
+
+	createFeed, err := s.db.AddFeed(context.Background(), feedParams)
+	if err != nil {
+		if dbError, ok := err.(*pq.Error); ok {
+			return fmt.Errorf("there was an error adding feed to the db: %v\n", dbError.Code)
+		} else {
+			return fmt.Errorf("there was an error adding feed to the db: %v\n", err)
+		}
+	}
+
+	fmt.Println(createFeed.ID)
+	fmt.Println(createFeed.CreatedAt)
+	fmt.Println(createFeed.UpdatedAt)
+	fmt.Println(createFeed.Name)
+	fmt.Println(createFeed.Url)
+	fmt.Println(createFeed.UserID)
 
 	return nil
 }
