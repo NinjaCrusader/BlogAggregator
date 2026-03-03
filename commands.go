@@ -213,3 +213,21 @@ func handlerAddFeed(s *state, cmd command) error {
 
 	return nil
 }
+
+func handlerPrintFeeds(s *state, cmd command) error {
+
+	feeds, err := s.db.PrintFeeds(context.Background())
+	if err != nil {
+		if dbError, ok := err.(*pq.Error); ok {
+			return fmt.Errorf("there was an error printing feeds from the db: %v\n", dbError.Code)
+		} else {
+			return fmt.Errorf("there was an error printing feeds from the db: %v\n", err)
+		}
+	}
+
+	for i := 0; i < len(feeds); i++ {
+		fmt.Println(feeds[i])
+	}
+
+	return nil
+}
