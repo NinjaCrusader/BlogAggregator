@@ -53,66 +53,6 @@ func (c *commands) register(name string, f func(*state, command) error) {
 
 //commands to be used
 
-func handlerLogin(s *state, cmd command) error {
-	if len(cmd.args) != 1 {
-		return fmt.Errorf("usage: login <username>")
-	}
-
-	username := cmd.args[0]
-
-	_, err := s.db.GetUser(context.Background(), username)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return fmt.Errorf("this user does not exist\n")
-		}
-
-		if dbError, ok := err.(*pq.Error); ok {
-			return fmt.Errorf("error with query: %v\n", dbError.Code)
-		}
-		return fmt.Errorf("error with query: %v\n", err)
-	}
-
-	if err := s.cfg.SetUser(username); err != nil {
-		return err
-	}
-
-	fmt.Printf("The user has been set to %v\n", s.cfg.Username)
-
-	return nil
-}
-
-func handlerRegister(s *state, cmd command) error {
-
-	if len(cmd.args) < 1 {
-		return fmt.Errorf("no argument provided")
-	}
-
-	var userParams database.CreateUserParams
-
-	userParams.ID = uuid.New()
-	userParams.CreatedAt = time.Now()
-	userParams.UpdatedAt = time.Now()
-	userParams.Name = cmd.args[0]
-
-	createdUser, err := s.db.CreateUser(context.Background(), userParams)
-	if err != nil {
-		if dbError, ok := err.(*pq.Error); ok {
-			if dbError.Code == "23505" {
-				return fmt.Errorf("a user with this name already exists: %v\n", dbError)
-			}
-			return fmt.Errorf("error creating user: %v\n", dbError.Code)
-		} else {
-			return fmt.Errorf("error creating user: %v\n", err)
-		}
-	}
-
-	s.cfg.SetUser(createdUser.Name)
-
-	fmt.Printf("The user %v was created %v\n", createdUser.Name, createdUser)
-
-	return nil
-}
-
 func reset(s *state, cmd command) error {
 
 	err := s.db.DeleteUsers(context.Background())
@@ -159,6 +99,11 @@ func agg(s *state, cmd command) error {
 	}
 
 	fmt.Println(*feed)
+
+	return nil
+}
+
+func follow(s *state, cmd command) error {
 
 	return nil
 }
@@ -228,6 +173,66 @@ func handlerPrintFeeds(s *state, cmd command) error {
 	for i := 0; i < len(feeds); i++ {
 		fmt.Println(feeds[i])
 	}
+
+	return nil
+}
+
+func handlerRegister(s *state, cmd command) error {
+
+	if len(cmd.args) < 1 {
+		return fmt.Errorf("no argument provided")
+	}
+
+	var userParams database.CreateUserParams
+
+	userParams.ID = uuid.New()
+	userParams.CreatedAt = time.Now()
+	userParams.UpdatedAt = time.Now()
+	userParams.Name = cmd.args[0]
+
+	createdUser, err := s.db.CreateUser(context.Background(), userParams)
+	if err != nil {
+		if dbError, ok := err.(*pq.Error); ok {
+			if dbError.Code == "23505" {
+				return fmt.Errorf("a user with this name already exists: %v\n", dbError)
+			}
+			return fmt.Errorf("error creating user: %v\n", dbError.Code)
+		} else {
+			return fmt.Errorf("error creating user: %v\n", err)
+		}
+	}
+
+	s.cfg.SetUser(createdUser.Name)
+
+	fmt.Printf("The user %v was created %v\n", createdUser.Name, createdUser)
+
+	return nil
+}
+
+func handlerLogin(s *state, cmd command) error {
+	if len(cmd.args) != 1 {
+		return fmt.Errorf("usage: login <username>")
+	}
+
+	username := cmd.args[0]
+
+	_, err := s.db.GetUser(context.Background(), username)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("this user does not exist\n")
+		}
+
+		if dbError, ok := err.(*pq.Error); ok {
+			return fmt.Errorf("error with query: %v\n", dbError.Code)
+		}
+		return fmt.Errorf("error with query: %v\n", err)
+	}
+
+	if err := s.cfg.SetUser(username); err != nil {
+		return err
+	}
+
+	fmt.Printf("The user has been set to %v\n", s.cfg.Username)
 
 	return nil
 }
