@@ -319,3 +319,38 @@ func handlerLogin(s *state, cmd command) error {
 
 	return nil
 }
+
+func handlerDelete(s *state, cmd command, user database.User) error {
+
+	uuidUser := uuid.NullUUID{
+		UUID:  user.ID,
+		Valid: true,
+	}
+
+	url := cmd.args[0]
+
+	feedID, err := s.db.FindFeedByURL(context.Background(), url)
+	if err != nil {
+		if dbError, ok := err.(*pq.Error); ok {
+			return fmt.Errorf("there was an error getting the url ID: %v\n", dbError.Code)
+		} else {
+			return fmt.Errorf("there was an error getting the url ID: %v\n", err)
+		}
+	}
+
+	var deleteParams database.DeleteFollowParams
+
+	deleteParams.UserID = uuidUser.UUID
+	deleteParams.FeedID = feedID.ID
+
+	dbErr := s.db.DeleteFollow(context.Background(), deleteParams)
+	if dbErr != nil {
+		if dbError, ok := dbErr.(*pq.Error); ok {
+			return fmt.Errorf("there was an issue unfollowing: %v\n", dbError.Code)
+		} else {
+			return fmt.Errorf("there was an issue unfollowing: %v\n", dbErr)
+		}
+	}
+
+	return nil
+}
