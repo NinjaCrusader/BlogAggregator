@@ -103,12 +103,85 @@ func agg(s *state, cmd command) error {
 	return nil
 }
 
-func follow(s *state, cmd command) error {
+func follow(s *state, cmd command, user database.User) error {
+
+	uuidUser := uuid.NullUUID{
+		UUID:  user.ID,
+		Valid: true,
+	}
+
+	url := strings.TrimSpace(cmd.args[0])
+
+	feedLookupResult, err := s.db.FindFeedByURL(context.Background(), url)
+	if err != nil {
+		if dbError, ok := err.(*pq.Error); ok {
+			return fmt.Errorf("there was an error finding the url by name: %v\n", dbError.Code)
+		} else {
+			return fmt.Errorf("there was an error finding the url by name: %v\n", err)
+		}
+	}
+
+	var insertFeedParams database.CreateFeedFollowParams
+
+	insertFeedParams.ID = uuid.New()
+	insertFeedParams.CreatedAt = time.Now()
+	insertFeedParams.UpdatedAt = time.Now()
+	insertFeedParams.UserID = uuidUser.UUID
+	insertFeedParams.FeedID = feedLookupResult.ID
+
+	insertedFeed, err := s.db.CreateFeedFollow(context.Background(), insertFeedParams)
+	if err != nil {
+		if dbError, ok := err.(*pq.Error); ok {
+			return fmt.Errorf("there was an error inserting the new follow: %v\n", dbError.Code)
+		} else {
+			return fmt.Errorf("there was an error inserting the new follow: %v\n", err)
+		}
+	}
+
+	fmt.Printf("%v, %v\n", insertedFeed.UserName, insertedFeed.FeedName)
 
 	return nil
 }
 
-func handlerAddFeed(s *state, cmd command) error {
+func following(s *state, cmd command, user database.User) error {
+
+	uuidUser := uuid.NullUUID{
+		UUID:  user.ID,
+		Valid: true,
+	}
+
+	followingList, err := s.db.GetFeedFollowsForUser(context.Background(), uuidUser.UUID)
+	if err != nil {
+		if dbError, ok := err.(*pq.Error); ok {
+			return fmt.Errorf("there was an error getting the user following list: %v\n", dbError.Code)
+		} else {
+			return fmt.Errorf("there was an error getting the user following list: %v\n", err)
+		}
+	}
+
+	for i := 0; i < len(followingList); i++ {
+		fmt.Println(followingList[i])
+	}
+
+	return nil
+}
+
+func middlewareLoggedIn(handler func(s *state, cmd command, user database.User) error) func(*state, command) error {
+
+	return func(s *state, cmd command) error {
+		currentUser, err := s.db.GetUser(context.Background(), s.cfg.Username)
+		if err != nil {
+			if dbError, ok := err.(*pq.Error); ok {
+				return fmt.Errorf("there was an error getting the user: %v\n", dbError.Code)
+			} else {
+				return fmt.Errorf("there was an error getting the user: %v\n", err)
+			}
+		}
+		return handler(s, cmd, currentUser)
+	}
+}
+
+func handlerAddFeed(s *state, cmd command, user database.User) error {
 
 	if len(cmd.args) < 2 {
 		return fmt.Errorf("not enough arguments provided\n")
@@ -117,17 +190,8 @@ func handlerAddFeed(s *state, cmd command) error {
 	name := strings.TrimSpace(cmd.args[0])
 	url := strings.TrimSpace(cmd.args[1])
 
-	currentUser, err := s.db.GetUser(context.Background(), s.cfg.Username)
-	if err != nil {
-		if dbError, ok := err.(*pq.Error); ok {
-			return fmt.Errorf("there was an error getting the user: %v\n", dbError.Code)
-		} else {
-			return fmt.Errorf("there was an error getting the user: %v\n", err)
-		}
-	}
-
 	correctedUserID := uuid.NullUUID{
-		UUID:  currentUser.ID,
+		UUID:  user.ID,
 		Valid: true,
 	}
 
@@ -155,6 +219,25 @@ func handlerAddFeed(s *state, cmd command) error {
 	fmt.Println(createFeed.Name)
 	fmt.Println(createFeed.Url)
 	fmt.Println(createFeed.UserID)
+
+	var insertFeedParams database.CreateFeedFollowParams
+
+	insertFeedParams.ID = uuid.New()
+	insertFeedParams.CreatedAt = time.Now()
+	insertFeedParams.UpdatedAt = time.Now()
+	insertFeedParams.UserID = createFeed.UserID.UUID
+	insertFeedParams.FeedID = createFeed.ID
+
+	insertedFeed, err := s.db.CreateFeedFollow(context.Background(), insertFeedParams)
+	if err != nil {
+		if dbError, ok := err.(*pq.Error); ok {
+			return fmt.Errorf("there was an error inserting the new follow: %v\n", dbError.Code)
+		} else {
+			return fmt.Errorf("there was an error inserting the new follow: %v\n", err)
+		}
+	}
+
+	fmt.Printf("%v %v", insertedFeed.UserName, insertedFeed.FeedName)
 
 	return nil
 }
