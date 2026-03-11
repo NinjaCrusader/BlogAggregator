@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -91,15 +92,90 @@ func GetUsers(s *state, cmd command) error {
 	return nil
 }
 
-func agg(s *state, cmd command) error {
+func scrapeFeeds(s *state) error {
 
-	feed, err := fetchFeed(context.Background(), "https://www.wagslane.dev/index.xml")
+	nextFeedtoUpdate, err := s.db.GetNextFeedToFetch(context.Background())
 	if err != nil {
-		return fmt.Errorf("there was an error fetching feed: %v\n", err)
+		if dbError, ok := err.(*pq.Error); ok {
+			return fmt.Errorf("error getting the next Feed to fetch: %v\n", dbError.Code)
+		} else {
+			return fmt.Errorf("error getting the next Feed to fetch: %v\n", err)
+		}
 	}
 
-	fmt.Println(*feed)
+	markFeedAttemptErr := s.db.MarkFeedFetched(context.Background(), nextFeedtoUpdate.ID)
+	if markFeedAttemptErr != nil {
+		if dbError, ok := markFeedAttemptErr.(*pq.Error); ok {
+			return fmt.Errorf("there was an err marking the next feed to update: %v\n", dbError.Code)
+		} else {
+			return fmt.Errorf("there was an err marking the next feed to update: %v\n", markFeedAttemptErr)
+		}
+	}
 
+	fetchingFeeds, err := fetchFeed(context.Background(), nextFeedtoUpdate.Url)
+	if err != nil {
+		if dbError, ok := err.(*pq.Error); ok {
+			return fmt.Errorf("there was an error fetching feeds: %v\n", dbError.Code)
+		} else {
+			return fmt.Errorf("there was an error fetching feeds: %v\n", err)
+		}
+	}
+
+	for i := 0; i < len(fetchingFeeds.Channel.Item); i++ {
+		fmt.Println(fetchingFeeds.Channel.Item[i].Title)
+
+		var createPostParam database.CreatePostParams
+
+		uuidDescription := sql.NullString{
+			String: fetchingFeeds.Channel.Item[i].Description,
+			Valid:  true,
+		}
+
+		parseTime, err := time.Parse("2020-01-01 12:00:00 +0000 UTC", fetchingFeeds.Channel.Item[i].PubDate)
+		if err != nil {
+			return fmt.Errorf("there was an error converting the time to insert into the db: %v\n", err)
+		}
+
+		uuidPublishedAt := sql.NullTime{
+			Time:  parseTime,
+			Valid: true,
+		}
+
+		createPostParam.ID = uuid.New()
+		createPostParam.CreatedAt = time.Now()
+		createPostParam.UpdatedAt = time.Now()
+		createPostParam.Title = fetchingFeeds.Channel.Item[i].Title
+		createPostParam.Url = fetchingFeeds.Channel.Item[i].Link
+		createPostParam.Description = uuidDescription
+		createPostParam.PublishedAt = uuidPublishedAt
+		createPostParam.FeedID = fetchingFeeds
+
+		err := s.db.CreatePost(context.Background())
+	}
+
+	return nil
+}
+
+func agg(s *state, cmd command) error {
+
+	if len(cmd.args) != 1 {
+		return fmt.Errorf("not enough arguments passed\n")
+	}
+
+	waitTime, err := time.ParseDuration(cmd.args[0])
+	if err != nil {
+		return fmt.Errorf("could not convert input into time.Duration: %v\n", err)
+	}
+
+	fmt.Printf("Collecting feeds every %v\n", waitTime)
+
+	ticker := time.NewTicker(waitTime)
+	for ; ; <-ticker.C {
+		err := scrapeFeeds(s)
+		if err != nil {
+			log.Printf("there was an error within scrapeFeeds: %v\n", err)
+		}
+	}
 	return nil
 }
 
