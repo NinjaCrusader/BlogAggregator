@@ -131,13 +131,37 @@ func scrapeFeeds(s *state) error {
 			Valid:  true,
 		}
 
-		parseTime, err := time.Parse("2020-01-01 12:00:00 +0000 UTC", fetchingFeeds.Channel.Item[i].PubDate)
+		timeFormats := []string{
+			"Mon, 02 Jan 2006 15:04:05 GMT",
+			"Mon, 02 Jan 2006 15:04:05 MST",
+			"Mon, 02 Jan 2006 15:04:05 -0700",
+			"Mon Jan _2 15:04:05 2006",
+			"Mon Jan _2 15:04:05 MST 2006",
+			"Mon Jan 02 15:04:05 -0700 2006",
+			"02 Jan 06 15:04 MST",
+			"02 Jan 06 15:04 -0700",
+		}
+
+		var parseTime time.Time
+		for _, format := range timeFormats {
+			parseTime, err = time.Parse(format, fetchingFeeds.Channel.Item[i].PubDate)
+			if err == nil {
+				break
+			}
+		}
+
 		if err != nil {
-			return fmt.Errorf("there was an error converting the time to insert into the db: %v\n", err)
+			fmt.Printf("could not parse pub date for post: %v\n", fetchingFeeds.Channel.Item[i].Title)
+			continue
 		}
 
 		uuidPublishedAt := sql.NullTime{
 			Time:  parseTime,
+			Valid: true,
+		}
+
+		uuidFeedID := uuid.NullUUID{
+			UUID:  nextFeedtoUpdate.ID,
 			Valid: true,
 		}
 
@@ -148,9 +172,20 @@ func scrapeFeeds(s *state) error {
 		createPostParam.Url = fetchingFeeds.Channel.Item[i].Link
 		createPostParam.Description = uuidDescription
 		createPostParam.PublishedAt = uuidPublishedAt
-		createPostParam.FeedID = fetchingFeeds
+		createPostParam.FeedID = uuidFeedID
 
-		err := s.db.CreatePost(context.Background())
+		createPostError := s.db.CreatePost(context.Background(), createPostParam)
+		if createPostError != nil {
+			if dbError, ok := createPostError.(*pq.Error); ok {
+				if strings.Contains(string(dbError.Code), "23505") {
+					continue
+				} else {
+					return fmt.Errorf("there was an error inserting post into the db: %v\n", dbError.Code)
+				}
+			} else {
+				return fmt.Errorf("there was an error inserting post into the db: %v\n", createPostError)
+			}
+		}
 	}
 
 	return nil
