@@ -27,5 +27,9 @@ It lets you register users, add and follow RSS feeds, periodically scrape new po
 - PostgreSQL database instance.  
 - A valid schema and queries under `sql/schema` and `sql/queries` consumable by sqlc. 
 - sqlc installed if you need to regenerate the `internal/database` package. 
+- Craete a config file within the pc home directory called ".gatorconfig.json"
+    - This is an example of the config file: {"connection_string":"","current_user_name":""}
 
 You are expected to have a PostgreSQL DSN (URL) that the config layer can read (for example from a config file or environment variable, depending on how `internal/config` is implemented). 
+
+
