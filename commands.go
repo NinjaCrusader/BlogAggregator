@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strconv"
 	"strings"
 	"time"
 
@@ -250,6 +251,50 @@ func follow(s *state, cmd command, user database.User) error {
 	}
 
 	fmt.Printf("%v, %v\n", insertedFeed.UserName, insertedFeed.FeedName)
+
+	return nil
+}
+
+func browse(s *state, cmd command, user database.User) error {
+
+	var defaultLimit int
+	var limit int
+	var err error
+	if len(cmd.args) == 0 {
+		defaultLimit = 2
+	} else {
+		limit, err = strconv.Atoi(cmd.args[0])
+		if err != nil {
+			return fmt.Errorf("there was a problem parsing the provided value: %v\n", err)
+		}
+	}
+
+	if limit <= 0 {
+		limit = defaultLimit
+	}
+
+	uuidUserID := uuid.NullUUID{
+		UUID:  user.ID,
+		Valid: true,
+	}
+
+	var postParams database.GetPostsForUserParams
+
+	postParams.UserID = uuidUserID
+	postParams.Limit = int32(limit)
+
+	posts, err := s.db.GetPostsForUser(context.Background(), postParams)
+	if err != nil {
+		if dbError, ok := err.(*pq.Error); ok {
+			return fmt.Errorf("there was an error getting the posts for the user: %v\n", dbError.Code)
+		} else {
+			return fmt.Errorf("there was an error getting the posts for the user: %v\n", err)
+		}
+	}
+
+	for _, post := range posts {
+		fmt.Println(post)
+	}
 
 	return nil
 }
